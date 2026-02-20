@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- ============================================= -->
+    <!-- 🔹 Main App Theme (Material3 + Compose Safe) -->
+    <!-- ============================================= -->
+    <style name="Theme.SmartAssist" parent="Theme.Material3.DayNight.NoActionBar">
+
+        <!-- Optional customization -->
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+
+    </style>
+
+
+    <!-- ============================================= -->
+    <!-- 🔹 Transparent Theme for Screen Capture       -->
+    <!-- ============================================= -->
+    <style name="Theme.SmartAssist.Transparent"
+        parent="Theme.Material3.DayNight.NoActionBar">
+
+        <!-- Make activity visually invisible -->
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:colorBackgroundCacheHint">@null</item>
+
+        <!-- Remove title / action bar -->
+        <item name="windowNoTitle">true</item>
+        <item name="android:windowNoTitle">true</item>
+
+        <!-- Prevent floating dialog look -->
+        <item name="android:windowIsFloating">false</item>
+
+        <!-- Remove dim behind -->
+        <item name="android:backgroundDimEnabled">false</item>
+
+    </style>
+
+</resources>
