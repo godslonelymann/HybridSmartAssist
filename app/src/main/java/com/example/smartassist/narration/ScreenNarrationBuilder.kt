@@ -1,35 +1,65 @@
 package com.example.smartassist.narration
 
+import android.content.Context
+import com.example.smartassist.settings.UserPreferences
 import com.example.smartassist.understanding.ScreenUnderstandingResult
 
 object ScreenNarrationBuilder {
 
     fun build(
+        context: Context,
         result: ScreenUnderstandingResult
     ): String {
 
-        val builder = StringBuilder()
+        val language =
+            UserPreferences.getSelectedLanguage(context)
 
-        if (result.screenType != "UNKNOWN") {
-            builder.append(
-                result.screenType
-                    .lowercase()
-                    .replaceFirstChar { it.uppercase() }
-            )
-            builder.append(" screen.\n\n")
-        }
+        return buildString {
 
-        builder.append(result.summary)
+            // 1️⃣ Screen identification
+            if (result.screenType.isNotBlank() &&
+                result.screenType != "UNKNOWN"
+            ) {
+                when (language) {
+                    "hi" -> appendLine("यह ${result.screenType.lowercase()} स्क्रीन है।")
+                    "mr" -> appendLine("ही ${result.screenType.lowercase()} स्क्रीन आहे.")
+                    else -> appendLine("You are on the ${result.screenType.lowercase()} screen.")
+                }
+                appendLine()
+            }
 
-        result.primaryAction?.let {
-            builder.append("\n\nMain action: ")
-            builder.append(it)
-        }
+            // 2️⃣ Main explanation
+            if (result.summary.isNotBlank()) {
+                appendLine(result.summary.trim())
+                appendLine()
+            }
 
-        if (result.confidence < 0.4f) {
-            builder.append("\n\nNote: Low confidence understanding.")
-        }
+            // 3️⃣ Image description
+            result.imageDescription?.let { image ->
+                if (image.isNotBlank()) {
+                    when (language) {
+                        "hi" -> appendLine("स्क्रीन पर एक छवि दिखाई दे रही है।")
+                        "mr" -> appendLine("स्क्रीनवर एक प्रतिमा दिसत आहे.")
+                        else -> appendLine("There is an image visible on the screen.")
+                    }
+                    appendLine(image.trim())
+                    appendLine()
+                }
+            }
 
-        return builder.toString().trim()
+            // 4️⃣ All available actions
+            if (result.actions.isNotEmpty()) {
+
+                when (language) {
+                    "hi" -> appendLine("आप निम्नलिखित कार्य कर सकते हैं:")
+                    "mr" -> appendLine("आपण खालील क्रिया करू शकता:")
+                    else -> appendLine("You can perform the following actions:")
+                }
+
+                result.actions.forEach { action ->
+                    appendLine("• ${action.trim()}")
+                }
+            }
+        }.trim()
     }
 }

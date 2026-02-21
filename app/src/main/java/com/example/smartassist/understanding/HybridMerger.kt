@@ -13,66 +13,76 @@ object HybridMerger {
         val ocrText =
             ocrBlocks
                 .map { it.text.trim() }
+                .filter { it.isNotBlank() }
                 .distinct()
                 .joinToString("\n")
 
+        // 🔹 If Groq fails → fallback cleanly
         if (groqRaw.isNullOrBlank()) {
             return ScreenUnderstandingResult(
                 screenType = "CONTENT",
-                primaryAction = null,
-                summary = ocrText,
+                summary = if (ocrText.isNotBlank()) {
+                    ocrText
+                } else {
+                    "No visible text detected."
+                },
+                actions = emptyList(),
+                imageDescription = null,
                 confidence = 0.5f
             )
         }
 
         return try {
 
-            // Try JSON parsing first
             val json = JSONObject(groqRaw)
 
             val screenType =
                 json.optString("screenType", "CONTENT")
 
-            val primaryAction =
-                json.optString("primaryAction")
+            val summary =
+                json.optString("summary", "")
+                    .trim()
+
+            val imageDescription =
+                json.optString("imageDescription", "")
                     .takeIf { it.isNotBlank() }
 
-            val visualDescription =
-                json.optString("visualDescription", "")
-
             val confidence =
-                json.optDouble("confidence", 0.8)
+                json.optDouble("confidence", 0.7)
                     .toFloat()
                     .coerceIn(0f, 1f)
 
-            val finalSummary =
-                buildString {
-                    if (visualDescription.isNotBlank()) {
-                        appendLine(visualDescription)
+            // 🔥 Parse actions array
+            val actionsList = mutableListOf<String>()
+
+            val actionsArray = json.optJSONArray("actions")
+            if (actionsArray != null) {
+                for (i in 0 until actionsArray.length()) {
+                    val action =
+                        actionsArray.optString(i).trim()
+                    if (action.isNotBlank()) {
+                        actionsList.add(action)
                     }
-                    if (ocrText.isNotBlank()) {
-                        appendLine()
-                        appendLine("Text on screen:")
-                        appendLine(ocrText)
-                    }
-                }.trim()
+                }
+            }
 
             ScreenUnderstandingResult(
                 screenType = screenType,
-                primaryAction = primaryAction,
-                summary = finalSummary,
+                summary = summary,
+                actions = actionsList,
+                imageDescription = imageDescription,
                 confidence = confidence
             )
 
         } catch (e: Exception) {
 
-            // Not JSON → treat as natural LLM explanation
-
+            // 🔹 JSON parsing failed → fallback safely
             ScreenUnderstandingResult(
                 screenType = "CONTENT",
-                primaryAction = null,
                 summary = groqRaw.trim(),
-                confidence = 0.85f
+                actions = emptyList(),
+                imageDescription = null,
+                confidence = 0.6f
             )
         }
     }

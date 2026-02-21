@@ -19,6 +19,7 @@ class ScreenCapturePermissionActivity :
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        overridePendingTransition(0, 0)
 
         projectionManager =
             getSystemService(Context.MEDIA_PROJECTION_SERVICE)
@@ -52,5 +53,6 @@ class ScreenCapturePermissionActivity :
         }
 
         finish()
+        overridePendingTransition(0, 0)
     }
 }

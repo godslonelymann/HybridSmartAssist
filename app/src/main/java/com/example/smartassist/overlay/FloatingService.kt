@@ -129,6 +129,14 @@ class FloatingService : Service() {
         createBubble()
         createPanel()
 
+        // 🔥 Preload current selected language to avoid first-capture delay
+        val initialLanguage =
+            UserPreferences.getSelectedLanguage(applicationContext)
+
+        serviceScope.launch {
+            translator.preloadLanguage(initialLanguage)
+        }
+
         bubbleParams = WindowManager.LayoutParams(
             bubbleSize,
             bubbleSize,
@@ -242,21 +250,74 @@ class FloatingService : Service() {
                             groqResponse
                         )
 
-                    val narration =
-                        ScreenNarrationBuilder.build(hybridResult)
-
                     val targetLang =
                         UserPreferences.getSelectedLanguage(applicationContext)
 
-                    val finalText =
-                        try {
-                            translator.translate(
-                                narration,
-                                targetLang
-                            )
-                        } catch (_: Exception) {
-                            narration
+                    // 🔹 Translate ONLY semantic fields, not formatted text
+
+                    val translatedSummary =
+                        if (targetLang == "en") {
+                            hybridResult.summary
+                        } else {
+                            try {
+                                translator.translate(
+                                    hybridResult.summary,
+                                    targetLang
+                                )
+                            } catch (_: Exception) {
+                                hybridResult.summary
+                            }
                         }
+
+                    val translatedImageDescription =
+                        if (targetLang == "en") {
+                            hybridResult.imageDescription
+                        } else {
+                            hybridResult.imageDescription?.let { desc ->
+                                try {
+                                    translator.translate(desc, targetLang)
+                                } catch (_: Exception) {
+                                    desc
+                                }
+                            }
+                        }
+
+                    // 🔹 Translate actions list
+                    val translatedActions =
+                        if (targetLang == "en") {
+                            hybridResult.actions
+                        } else {
+                            hybridResult.actions.map { action ->
+                                try {
+                                    translator.translate(action, targetLang)
+                                } catch (_: Exception) {
+                                    action
+                                }
+                            }
+                        }
+
+                    val translatedResult =
+                        hybridResult.copy(
+                            summary = translatedSummary,
+                            actions = translatedActions,
+                            imageDescription = translatedImageDescription
+                        )
+
+                    val finalFormatted =
+                        ScreenNarrationBuilder.build(
+                            this@FloatingService,
+                            translatedResult
+                        )
+                    val finalText =
+                        if (ocrText.isNotBlank()) {
+                            finalFormatted +
+                                    "\n\nText Detected:\n" +
+                                    ocrText
+                        } else {
+                            finalFormatted
+                        }
+
+
 
                     withContext(Dispatchers.Main) {
                         lastResultText = finalText
@@ -329,6 +390,11 @@ class FloatingService : Service() {
 
         val language =
             UserPreferences.getSelectedLanguage(applicationContext)
+
+        // 🔥 Preload translation model immediately
+        serviceScope.launch {
+            translator.preloadLanguage(language)
+        }
 
         readAloudButton.text =
             Labels.t(language, "read")

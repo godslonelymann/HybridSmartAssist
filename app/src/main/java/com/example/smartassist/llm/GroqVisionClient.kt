@@ -43,8 +43,6 @@ class GroqVisionClient(
 
             val requestJson = buildRequest(base64Image, ocrText)
 
-            Log.d(TAG, "Request JSON: $requestJson")
-
             val requestBody =
                 requestJson
                     .toString()
@@ -63,7 +61,6 @@ class GroqVisionClient(
                 val bodyString = response.body?.string()
 
                 Log.d(TAG, "Response code: ${response.code}")
-                Log.d(TAG, "Response body: $bodyString")
 
                 if (!response.isSuccessful) {
                     Log.e(TAG, "Groq Vision failed: ${response.code} ${response.message}")
@@ -87,22 +84,41 @@ class GroqVisionClient(
     ): JSONObject {
 
         val prompt = """
-You are a screen understanding assistant.
+You are an accessibility screen understanding assistant.
 
-Analyze the screenshot and OCR text.
-Return a structured explanation in natural language.
+Analyze the screenshot and OCR text carefully.
+
+Your task:
+
+1. Identify what type of screen this is (settings, login, home, product, form, etc.).
+2. Explain clearly what this screen is for in simple language.
+3. List ALL visible actions the user can take.
+   - Include buttons, menu options, toggles, links, inputs.
+   - Use short action phrases.
+4. If there is any image:
+   - Identify what it represents.
+   - Classify it as person, animal, object, product, place, logo, or illustration.
+   - Describe it in ONE short sentence.
+5. Do NOT repeat OCR text word-by-word.
+6. Do NOT describe layout positions.
+7. Keep explanation short and useful (max 4 sentences in summary).
+
+Return STRICT JSON:
+
+{
+  "screenType": "ONE_WORD_TYPE",
+  "summary": "Clear explanation of what this screen is and what the user can do.",
+  "actions": [
+    "Action 1",
+    "Action 2"
+  ],
+  "imageDescription": "Short image description if present, otherwise empty string",
+  "confidence": 0.0-1.0
+}
 
 OCR Text:
 $ocrText
-
-Describe:
-1. What type of screen this is
-2. What the user can do here
-3. Important visible elements
-4. Clear summary
-
-Keep it concise.
-        """.trimIndent()
+""".trimIndent()
 
         val contentParts = JSONArray()
             .put(JSONObject().put("type", "text").put("text", prompt))
@@ -123,8 +139,8 @@ Keep it concise.
         return JSONObject()
             .put("model", MODEL)
             .put("messages", JSONArray().put(message))
-            .put("temperature", 0.2)
-            .put("max_tokens", 800)
+            .put("temperature", 0.1)      // More deterministic
+            .put("max_tokens", 400)       // Reduced for stability
     }
 
     private fun extractText(responseJson: String): String? {
@@ -139,7 +155,12 @@ Keep it concise.
                     .getJSONObject(0)
                     .getJSONObject("message")
 
-            message.optString("content", null)
+            val raw = message.optString("content", null) ?: return null
+
+            raw
+                .replace("```json", "")
+                .replace("```", "")
+                .trim()
 
         } catch (e: Exception) {
             Log.e(TAG, "Groq parse error", e)
@@ -149,7 +170,7 @@ Keep it concise.
 
     private fun bitmapToBase64(bitmap: Bitmap): String {
         val stream = ByteArrayOutputStream()
-        bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream)
+        bitmap.compress(Bitmap.CompressFormat.PNG, 90, stream)  // Slight compression
         val bytes = stream.toByteArray()
         return Base64.encodeToString(bytes, Base64.NO_WRAP)
     }

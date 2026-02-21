@@ -44,7 +44,7 @@
         <activity
             android:name=".onboarding.OnboardingActivity"
             android:exported="false"
-            android:theme="@style/Theme.SmartAssist.Transparent" />
+            android:theme="@style/Theme.SmartAssist" />
 
         <!-- 🔹 Settings -->
         <activity
@@ -56,7 +56,10 @@
         <activity
             android:name=".settings.ScreenCapturePermissionActivity"
             android:exported="false"
-            android:theme="@style/Theme.SmartAssist" />
+            android:excludeFromRecents="true"
+            android:finishOnTaskLaunch="true"
+            android:taskAffinity=""
+            android:theme="@style/Theme.SmartAssist.Transparent" />
 
         <!-- 🔹 Floating Overlay Service -->
         <service
